@@ -384,6 +384,11 @@ textarea{width:100%;min-height:110px;border:1px solid var(--hair);border-radius:
 .pl-gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.85rem;color:var(--ink);padding-bottom:6px;border-bottom:1px solid var(--hair)}
 .pl-gh small{font-size:.75rem;color:var(--muted)}
 .pl-gh>span:last-child{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.pl-cw{position:relative}
+.pl-cw .pl-card{padding-right:52px}
+.pl-ed{position:absolute;top:6px;right:0;z-index:1;width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--hair);border-radius:50%;background:var(--paper);color:var(--accent-line);cursor:pointer}
+.pl-ed:hover{border-color:var(--accent)}
+.pl-ed:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pl-card{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%;min-height:56px;padding:12px 0;border:none;border-bottom:1px dotted var(--hair);background:none;text-align:left;cursor:pointer;align-items:start}
 .pl-card:last-child{border-bottom:none}
 .pl-card.pl-hasimg{grid-template-columns:64px minmax(0,1fr)}
@@ -1690,13 +1695,13 @@ function plFixFilters(){
 function plSel(k,label,all,opts){return `<label class="k-f" for="plF-${k}"><span>${label}</span><select class="k-sel" id="plF-${k}" data-pf="${k}"><option value="">${all}</option>`+opts.map(o=>`<option value="${plE(o)}"${PL_F[k]===o?" selected":""}>${plE(o)}</option>`).join("")+`</select></label>`;}
 function plRates(p,me,cls){return `<span class="pl-rt${cls}"><span class="pl-pair"><span class="pl-rl">${me}</span>${p.myR?lgRo(p.myR):`<span class="pl-none">noch offen</span>`}</span><span class="pl-pair"><span class="pl-rl">Claude</span>${p.cR?`<span class="pl-cr">${plE(p.cR)}</span>`:`<span class="pl-none">–</span>`}</span></span>`;}
 function plCard(p){const where=plWhere(p), trip=plTripName(p.trip);
-  return `<button type="button" class="pl-card${p.photo?" pl-hasimg":""}" id="plc-${p.id}" data-pl="${p.id}" aria-label="${plE(p.name)} bearbeiten">
+  return `<div class="pl-cw"><button type="button" class="pl-ed" data-pled="${p.id}" aria-label="${plE(p.name)} bearbeiten" title="Bearbeiten"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></button><button type="button" class="pl-card${p.photo?" pl-hasimg":""}" id="plc-${p.id}" data-pl="${p.id}" aria-label="${plE(p.name)} ansehen">
     ${p.photo?`<span class="pl-th"><img data-plimg="${p.photo}" alt=""></span>`:""}
     <span class="pl-main"><span class="pl-nm">${plE(p.name)}</span>
       <span class="pl-meta">${PL_TYPEN[p.type]}${plOrt(p)?" · "+plE(plOrt(p)):""}</span>
       ${plRates(p,"Ich","")}
       <span class="pl-tags"><span class="pl-chip${trip?"":" pl-idea"}">${trip?plE(trip):"Idee"}</span>${where.length?`<span class="pl-when">Im Plan: ${plE(where.map(w=>w.txt.split(" · ").filter((x,j)=>j!==1).join(" ")).join(", "))}</span>`:""}</span>
-    </span></button>`;}
+    </span></button></div>`;}
 function renderPlaces(){
   const root=document.getElementById("pl-root"); if(!root) return;
   const ta=document.getElementById("plImpTa"); if(ta) PL_IMPTXT=ta.value;
@@ -1735,7 +1740,8 @@ function renderPlaces(){
 const plFocus=id=>{const el=document.getElementById(id); if(el) el.focus({preventScroll:true});};
 function plWireList(root){
   ["plNew","plNew2","plNew3"].forEach(id=>{const b=document.getElementById(id); if(b) b.onclick=()=>plOpen(null,b);});
-  root.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>plOpen(b.dataset.pl,b));
+  root.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>plView(b.dataset.pl));
+  root.querySelectorAll("[data-pled]").forEach(b=>b.onclick=()=>plOpen(b.dataset.pled,b));
   root.querySelectorAll("select[data-pf]").forEach(s=>s.onchange=()=>{const k=s.dataset.pf; PL_F[k]=s.value; if(k==="land"){PL_F.region=""; PL_F.stadt="";} if(k==="region") PL_F.stadt=""; renderPlaces(); plFocus("plF-"+k);});
   root.querySelectorAll("[data-pt]").forEach(b=>b.onclick=()=>{PL_F.type=b.dataset.pt; renderPlaces(); plFocus(b.id);});
   const tabs=[...root.querySelectorAll("[data-pr]")];
@@ -1795,7 +1801,7 @@ function plImport(){
       maps:plNormUrl(x.maps,"maps"),web:plNormUrl(x.web||x.webseite,"web"),insta:plNormUrl(x.insta||x.instagram,"insta"),cR,cFb:String(x.feedback||"").trim(),
       cost:{a:isNaN(amt)?"":amt,c:K_CUR.includes(cur)?cur:"EUR",per:low(k.pro)==="pauschal"?"pauschal":"person"},trip,breg,full:!!x.ganzerTag,dive:!!x.tauchgang};
     ["maps","web","insta"].forEach(l=>{if(!plUrlOK(f[l])) f[l]="";});
-    const ex=PL.items.find(p=>low(p.name)===low(name)&&low(p.stadt)===low(f.stadt));
+    const ex=(x.kuId&&PL.items.find(p=>p.id===String(x.kuId)))||PL.items.find(p=>low(p.name)===low(name)&&(low(p.stadt)===low(f.stadt)||!f.stadt||!p.stadt));
     if(ex){["land","region","stadt","addr","maps","web","insta"].forEach(l=>{if(f[l]&&!ex[l]) ex[l]=f[l];});
       if(f.cR) ex.cR=f.cR; if(f.cFb) ex.cFb=f.cFb; if(f.cost.a!==""&&ex.cost.a==="") ex.cost=f.cost; if(f.trip&&!ex.trip) ex.trip=f.trip; if(f.breg&&!ex.breg) ex.breg=f.breg; if(f.dive) ex.dive=true; upd++;}
     else {PL.items.push(plClean(f)); neu++;}});
@@ -1824,7 +1830,7 @@ function plFormHTML(p,isNew){const trips=allTrips(), where=isNew?[]:plWhere(p);
   h+=`<h3 class="pl-sh">Links</h3>${plIn("maps","Google-Maps-Link",p.maps,{attrs:'data-v="url" inputmode="url" placeholder="https://maps.app.goo.gl/…"'})}${plIn("web","Webseite",p.web,{attrs:'data-v="url" inputmode="url" placeholder="https://…"'})}${plIn("insta","Instagram",p.insta,{attrs:'data-v="insta" inputmode="url" placeholder="@name oder Link"'})}`;
   h+=`<h3 class="pl-sh">Bewertung</h3><div class="k-fs"><span class="lbl" id="plf-myRl">Meine Bewertung</span>${plStars(p.myR)}</div>${plTa("myFb","Mein Feedback",p.myFb)}`;
   h+=plIn("cR","Claudes Bewertung",p.cR,{attrs:'data-v="rating" placeholder="z. B. 9/10"'})+plTa("cFb","Claudes Feedback",p.cFb);
-  h+=`<div class="k-acts"><button type="button" class="k-btn2" id="plAsk">Claude um Rat fragen</button></div><p class="k-muted pl-hint">Schickt den Ausflug an die Claude-App. Teil Claudes Antwort danach mit Kū, dann landen Bewertung und Beschreibung hier.</p>`;
+  h+=`<div class="k-acts"><button type="button" class="k-btn2" id="plAsk">KI um Rat fragen</button><button type="button" class="textbtn" id="plAns">Antwort einfügen</button></div><p class="k-muted pl-hint">Schickt den Ausflug an Claude, ChatGPT oder eine andere KI. Die Antwort teilst du danach mit Kū oder kopierst sie und tippst auf „Antwort einfügen“. Bewertung, Beschreibung und fehlende Angaben landen dann hier.</p>`;
   h+=`<h3 class="pl-sh">Foto</h3><div id="plPhoto"></div>`;
   h+=`<h3 class="pl-sh">Kosten</h3><div class="k-line">${plIn("ca","Betrag",p.cost.a===""?"":String(p.cost.a).replace(".",","),{cls:"k-grow",attrs:'data-v="num" inputmode="decimal"'})}<label class="k-f"><span>Währung</span>${kCurSel("plf-cc",p.cost.c,"Währung").replace("<select ",'<select data-k="cc" ')}</label><output class="k-eq" id="plEq"></output></div>`;
   h+=`<div class="opts pl-per" role="group" aria-label="Kosten gelten">`+[["person","pro Person"],["pauschal","pauschal"]].map(([k,n])=>`<button type="button" class="opt" data-per="${k}" aria-pressed="${p.cost.per===k}">${n}</button>`).join("")+`</div>`;
@@ -1885,6 +1891,9 @@ function plClose(){const sh=document.getElementById("plSheet"); if(sh.hidden) re
   PL_EDIT=null; PL_PH=null; PL_DEL=false;
   const r=PL_RET; PL_RET=null; if(r&&r.isConnected&&r.offsetParent!==null) r.focus(); else {const c=r&&r.id?document.getElementById(r.id):null; if(c&&c.offsetParent!==null) c.focus(); else {const h=document.querySelector(".view:not([hidden]) h1"); if(h){h.tabIndex=-1; h.focus();}}}}
 function plWireForm(){const f=document.getElementById("plForm");
+  const ans=document.getElementById("plAns"); if(ans) ans.onclick=async()=>{let txt=""; try{txt=await navigator.clipboard.readText();}catch(e){}
+    if(!/"name"\s*:/.test(txt||"")){toast("In der Zwischenablage ist keine Antwort mit JSON-Block. Kopier die ganze Antwort der KI."); return;}
+    plClose(); plFromShare(txt,"");};
   const ask=document.getElementById("plAsk"); if(ask) ask.onclick=()=>{const base=PL_EDIT==="new"?{}:plById(PL_EDIT)||{}; let d; try{d=plRead();}catch(e){d=null;} plAsk(Object.assign({},base,d&&d.name!==undefined?d:{}));};
   f.addEventListener("focusout",e=>{const t=e.target; if(t.matches&&t.matches("input[data-v]")) plErr(t.dataset.k,plCheck(t)); if(t.id==="plf-stadt"||t.id==="plf-trip") plAutoReg();});
   f.addEventListener("input",e=>{const t=e.target; if(t.matches&&t.matches("input[data-v]")&&t.getAttribute("aria-invalid")) plErr(t.dataset.k,""); if(t.id==="plf-ca") plEq();});
@@ -1938,7 +1947,7 @@ function plActHTML(actId){return plPlaceHTML(plByAct(actId),false);}
 function plCostTxt(p,group){if(!plCostE(p)) return ""; const g=Math.max(1,+group||1);
   if(p.cost.per!=="pauschal") return `${kShow(+p.cost.a,p.cost.c)} pro Person`;
   return g>1?`${kE(plCostE(p))} pauschal · ${kE(plCostE(p)/g)} mein Anteil`:`${kShow(+p.cost.a,p.cost.c)} pauschal`;}
-function plPlaceHTML(p,ro,group){if(!p) return "";
+function plPlaceHTML(p,ro,group,fb){if(!p) return "";
   let h=`<div class="pl-act">`;
   if(p.photo&&!ro) h+=`<div class="pl-actimg-w"><img class="pl-actimg" data-plimg="${p.photo}" alt="Foto: ${plE(p.name)}"></div>`;
   h+=ro?(p.cR?`<p class="pl-rt pl-rt-big"><span class="pl-pair"><span class="pl-rl">Claude</span><span class="pl-cr">${plE(p.cR)}</span></span></p>`:""):`${plRates(p,"Meine Bewertung"," pl-rt-big")}`;
@@ -1946,9 +1955,10 @@ function plPlaceHTML(p,ro,group){if(!p) return "";
   const dl=[["Art",PL_TYPEN[p.type]],["Adresse",p.addr],["Ort",plOrt(p)],["Kosten",plCostTxt(p,g)]].filter(x=>x[1]);
   h+=`<dl class="pl-dl">`+dl.map(([k,v])=>`<dt>${k}</dt><dd>${k==="Kosten"?v:plE(v)}</dd>`).join("")+`</dl>`;
   h+=plLinks(p);
+  if(fb&&p.cFb) h+=`<span class="lbl">Claudes Feedback</span><p>${plE(p.cFb).replace(/\n/g,"<br>")}</p>`;
   if(!ro&&p.myFb) h+=`<span class="lbl">Mein Feedback</span><p>${plE(p.myFb).replace(/\n/g,"<br>")}</p>`;
   if(!ro&&p.note) h+=`<span class="lbl">Notiz</span><p>${plE(p.note).replace(/\n/g,"<br>")}</p>`;
-  if(!ro) h+=`<div class="k-acts"><button type="button" class="textbtn" id="plActEdit" data-plid="${p.id}">Ausflug bearbeiten</button><button type="button" class="textbtn" id="plActAsk" data-plid="${p.id}">Claude um Rat fragen</button></div>`;
+  if(!ro) h+=`<div class="k-acts"><button type="button" class="textbtn" id="plActEdit" data-plid="${p.id}">Ausflug bearbeiten</button><button type="button" class="textbtn" id="plActAsk" data-plid="${p.id}">KI um Rat fragen</button></div>`;
   return h+`</div>`;}
 function plWireAct(){const b=document.getElementById("plActEdit"); if(!b) return; plFillImgs(document.getElementById("actBody"));
   b.onclick=()=>{const ret=ACTRET; closeAct(true); plOpen(b.dataset.plid,ret);};
@@ -1982,7 +1992,7 @@ async function plHttp(url,blob){const H=window.Capacitor&&window.Capacitor.Plugi
     if(blob){const b64=String(r.data||""); const bin=atob(b64.replace(/^data:[^,]*,/,"")); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new Blob([a],{type:(r.headers&&(r.headers["Content-Type"]||r.headers["content-type"]))||"image/jpeg"});}
     return typeof r.data==="string"?r.data:null;}catch(e){return null;}}
 async function plFromShare(text,subject){
-  if(/"name"\s*:/.test(String(text||""))){show("v-places"); PL_IMP=true; PL_IMPERR=""; renderPlaces(); const ta=document.getElementById("plImpTa"); if(ta){ta.value=text; plImport();} return;}
+  if(/"name"\s*:/.test(String(text||""))){show("v-places"); PL_IMP=true; PL_IMPERR=""; renderPlaces(); const ta=document.getElementById("plImpTa"); if(ta){ta.value=text; plImport(); const ids=[...String(text).matchAll(/"kuId"\s*:\s*"([^"]+)"/g)].map(m=>m[1]).filter(id=>plById(id)); if(ids.length===1&&!PL_IMPERR) setTimeout(()=>plView(ids[0]),200);} return;}
   const {pre,urls}=plShareParse(text,subject);
   if(!urls.length&&!pre.name){toast("Im geteilten Inhalt war kein Link."); return;}
   show("v-places"); plOpen(null,null,pre);
@@ -2004,16 +2014,44 @@ async function plFromShare(text,subject){
   S.addListener("share",go); S.take().then(go).catch(()=>{});})();
 
 /* ---- Ausflug an Claude schicken: Beratung und Beschreibung, Antwort per Teilen zurück ---- */
-function plAskText(p){const tr=p.trip?allTrips().find(t=>t.id===p.trip):null;
-  const info=[["Name",p.name],["Art",PL_TYPEN[p.type]],["Ort",[p.stadt,p.region,p.land].filter(Boolean).join(", ")],["Adresse",p.addr],["Google Maps",p.maps],["Webseite",p.web],["Instagram",p.insta],
-    ["Kosten",p.cost&&p.cost.a!==""?`${p.cost.a} ${p.cost.c} ${p.cost.per==="pauschal"?"pauschal":"pro Person"}`:""],["Meine Notiz",p.note],["Mein Feedback",p.myFb],["Reise",tr?tr.name:"noch keine, nur eine Idee"]].filter(x=>x[1]).map(([k,v])=>`${k}: ${v}`).join("\n");
-  const js=JSON.stringify([{name:p.name||"",stadt:p.stadt||"",land:p.land||"",region:p.region||"",adresse:p.addr||"",bewertung:"x/10",feedback:"Beschreibung und Beratung in 3 bis 5 Sätzen",kosten:p.cost&&p.cost.a!==""?p.cost.a:"",waehrung:(p.cost&&p.cost.c)||"EUR"}],null,1);
-  return `Ich überlege, diesen ${PL_TYPEN[p.type]||"Ausflug"} in meine Reise aufzunehmen. Bitte berate mich ehrlich: Was erwartet mich, lohnt es sich für mich, wie lange sollte ich einplanen, beste Tageszeit, was kostet es ungefähr, und worauf muss ich achten? Gib mir auch eine kurze Beschreibung.\n\n${info}\n\nSchreib am Ende genau diesen JSON-Block ausgefüllt (Name und Stadt unverändert lassen, Bewertung als x/10, Feedback = deine Beschreibung und Beratung kurz zusammengefasst), damit ich ihn in meine App Kū übernehmen kann:\n\n${js}`;}
+function plAskText(p){const tr=p.trip?allTrips().find(t=>t.id===p.trip):null, c=p.cost||{};
+  const info=[["Name",p.name],["Art",PL_TYPEN[p.type]],["Land",p.land],["Region",p.region],["Stadt",p.stadt],["Adresse",p.addr],["Google Maps",p.maps],["Webseite",p.web],["Instagram",p.insta],
+    ["Kosten",c.a!==""&&c.a!==undefined?`${c.a} ${c.c} ${c.per==="pauschal"?"pauschal":"pro Person"}`:""],["Meine Notiz",p.note],["Mein Feedback",p.myFb],["Reise",tr?tr.name:"noch keine, nur eine Idee"]]
+    .filter(x=>x[1]).map(([k,v])=>`- ${k}: ${v}`).join("\n");
+  const js=JSON.stringify([{kuId:p.id||"",name:p.name||"",typ:PL_TYPEN[p.type]||"Ausflug",land:p.land||"",region:p.region||"",stadt:p.stadt||"",adresse:p.addr||"",
+    maps:p.maps||"",web:p.web||"",insta:p.insta||"",kosten:c.a!==""&&c.a!==undefined?c.a:null,waehrung:c.c||"EUR",pro:c.per==="pauschal"?"pauschal":"person",
+    ganzerTag:!!p.full,tauchgang:!!p.dive,bewertung:"",feedback:""}],null,1);
+  return `Ich plane eine Reise und überlege, diesen ${PL_TYPEN[p.type]||"Ausflug"} aufzunehmen.
+
+${info}
+
+Bitte antworte in zwei Teilen:
+
+1. Beratung (kurz, ehrlich, auf Deutsch): Was erwartet mich? Lohnt es sich? Wie lange einplanen, beste Tageszeit, ungefähre Kosten, worauf achten? Wenn du etwas nicht sicher weißt, sag das.
+
+2. Danach genau EIN JSON-Codeblock für meine App Kū, ausgefüllt nach diesen Regeln:
+- "kuId" und "name" unverändert lassen.
+- "bewertung": deine Bewertung als "x/10".
+- "feedback": Beschreibung und Beratung in 2 bis 4 Sätzen.
+- Leere Felder ergänzen, wenn du es sicher weißt (Land, Region, Stadt, Adresse, offizielle Webseite, Instagram, Google-Maps-Link, Kosten als Zahl, Währung EUR/IDR/SGD, "pro" = "person" oder "pauschal", "ganzerTag", "tauchgang"). Sonst leer lassen, nichts erfinden.
+- Nur gültiges JSON, keine Kommentare, keine zusätzlichen Felder.
+
+\`\`\`json
+${js}
+\`\`\``;}
 async function plAsk(p){if(!p||!String(p.name||"").trim()){toast("Gib dem Ausflug zuerst einen Namen."); plFocus("plf-name"); return;}
   const txt=plAskText(p), S=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Share;
-  if(S){try{await S.share({title:"Ausflug: "+p.name,text:txt,dialogTitle:"An Claude schicken"}); return;}catch(e){if(e&&/cancel/i.test(String(e.message||e))) return;}}
+  if(S){try{await S.share({title:"Ausflug: "+p.name,text:txt,dialogTitle:"An KI schicken"}); return;}catch(e){if(e&&/cancel/i.test(String(e.message||e))) return;}}
   if(navigator.share){try{await navigator.share({title:"Ausflug: "+p.name,text:txt}); return;}catch(e){if(e&&e.name==="AbortError") return;}}
-  copy(txt,"Anfrage kopiert. Füg sie bei Claude ein.");}
+  copy(txt,"Anfrage kopiert. Füg sie bei deiner KI ein.");}
+
+/* ---- Übersicht eines Ausflugs (Antippen der Karte); Bearbeiten nur über den Stift ---- */
+function plView(id){const p=plById(id); if(!p) return; const where=plWhere(p), trip=plTripName(p.trip);
+  let h=`<h2 id="actT">${plE(p.name)}</h2><p class="act-meta">${PL_TYPEN[p.type]}${trip?" · "+plE(trip):" · Idee"}${p.full?" · Ganzer Tag":""}${p.dive?" · Tauchgang":""}</p>`;
+  h+=plPlaceHTML(p,false,0,true);
+  if(where.length) h+=`<span class="lbl">Im Plan</span><p>${where.map(w=>plE(w.txt)).join("<br>")}</p>`;
+  document.getElementById("actBody").innerHTML=h; ACTRET=document.getElementById("plc-"+id)||document.activeElement;
+  const sh=document.getElementById("actSheet"); sh.hidden=false; document.getElementById("actX").focus(); plWireAct();}
 
 /* Öffentliche Adresse von Kū (GitHub Pages), damit geteilte Links überall aufgehen */
 const GP_WEB="https://roseeyaquarius.github.io/ku-web/";
